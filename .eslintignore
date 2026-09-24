@@ -1,0 +1,9 @@
+node_modules
+.next
+backend
+venv
+storage
+*.log
+*.tsbuildinfo
+package-lock.json
+pnpm-lock.yaml

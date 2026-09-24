@@ -1,0 +1,65 @@
+# DataWise Backend — FastAPI + ML + PDF + Charts (Kaleido/Chrome)
+FROM python:3.11-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+# System deps: build, fonts, wkhtmltopdf libs, Chromium for Kaleido
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl ca-certificates wget xz-utils gnupg \
+        build-essential libgomp1 libpq-dev \
+        fontconfig fonts-dejavu-core fonts-liberation \
+        libxrender1 libxext6 libfontconfig1 libjpeg62-turbo \
+        xfonts-base xfonts-75dpi \
+        # Chromium + runtime libs (required by Plotly Kaleido)
+        chromium \
+        libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
+        libcups2 libdrm2 libxkbcommon0 libxcomposite1 \
+        libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2 \
+        libpango-1.0-0 libcairo2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Point Kaleido / plotly to system Chromium
+ENV BROWSER=/usr/bin/chromium \
+    CHROME_PATH=/usr/bin/chromium \
+    CHROMIUM_PATH=/usr/bin/chromium \
+    PLOTLY_CHROME_PATH=/usr/bin/chromium
+
+# wkhtmltopdf: apt on Bookworm, else official .deb
+RUN set -eux; \
+    if apt-get update && apt-get install -y --no-install-recommends wkhtmltopdf; then \
+      rm -rf /var/lib/apt/lists/*; \
+    else \
+      rm -rf /var/lib/apt/lists/*; \
+      ARCH="$(dpkg --print-architecture)"; \
+      wget -q -O /tmp/wkhtmltox.deb \
+        "https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltox_0.12.6.1-3.jammy_${ARCH}.deb"; \
+      apt-get update; \
+      apt-get install -y --no-install-recommends /tmp/wkhtmltox.deb || apt-get install -y -f /tmp/wkhtmltox.deb; \
+      rm -f /tmp/wkhtmltox.deb; \
+      rm -rf /var/lib/apt/lists/*; \
+    fi; \
+    wkhtmltopdf --version; \
+    chromium --version || true
+
+WORKDIR /app
+
+COPY backend/requirements.txt /app/backend/requirements.txt
+RUN pip install --upgrade pip && pip install -r /app/backend/requirements.txt
+
+# Some kaleido builds still look for Chrome via plotly helper
+RUN plotly_get_chrome || true
+
+COPY backend /app/backend
+RUN mkdir -p /app/storage && chmod 777 /app/storage
+
+ENV PYTHONPATH=/app \
+    STORAGE_PATH=/app/storage
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=20s --timeout=5s --start-period=50s --retries=5 \
+    CMD curl -fsS http://127.0.0.1:8000/ || exit 1
+
+CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

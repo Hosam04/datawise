@@ -1,0 +1,61 @@
+# Dockerfile.frontend
+# Build context = repository root (package.json + pnpm-lock.yaml + src/ + public/)
+
+FROM node:22-alpine AS deps
+WORKDIR /app
+RUN apk add --no-cache libc6-compat
+RUN corepack enable
+COPY package.json pnpm-lock.yaml* ./
+
+# pnpm 12 blocks lifecycle scripts unless approved.
+# Config must be in pnpm-workspace.yaml (package.json "pnpm" field is ignored).
+RUN printf '%s\n' \
+      'dangerouslyAllowAllBuilds: true' \
+      'strictDepBuilds: false' \
+      'allowBuilds:' \
+      '  msw: true' \
+      '  unrs-resolver: true' \
+      '  sharp: true' \
+      '  esbuild: true' \
+      > pnpm-workspace.yaml \
+    && pnpm install --frozen-lockfile --dangerously-allow-all-builds
+
+FROM node:22-alpine AS builder
+WORKDIR /app
+RUN apk add --no-cache libc6-compat
+RUN corepack enable
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/package.json ./package.json
+COPY --from=deps /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY . .
+
+RUN mkdir -p public
+
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID=
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID \
+    NEXT_TELEMETRY_DISABLED=1 \
+    NODE_ENV=production
+
+RUN pnpm build
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
+
+RUN apk add --no-cache libc6-compat \
+    && addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nextjs
+
+# Requires next.config: output: 'standalone'
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+EXPOSE 3000
+CMD ["node", "server.js"]

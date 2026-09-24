@@ -1,0 +1,8 @@
+id,name,value,amount,target
+1,"alpha",10,100,1
+2,"beta",20,200,0
+3,"unterminated,30,300,1
+4,gamma,40,sixty,0,EXTRA
+5,"delta",50,500,1
+6,epsilon,60,600
+7,zeta,abc,700,1

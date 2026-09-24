@@ -1,0 +1,45 @@
+# ── Web framework ──────────────────────────────────────────────
+fastapi
+uvicorn
+python-multipart
+pydantic
+email-validator
+
+# ── Auth ───────────────────────────────────────────────────────
+bcrypt
+python-jose[cryptography]
+google-auth
+
+# ── Database ───────────────────────────────────────────────────
+sqlalchemy
+psycopg2-binary
+
+
+# ── Data / ML ──────────────────────────────────────────────────
+pandas
+numpy
+scipy
+scikit-learn
+catboost
+xgboost
+lightgbm
+
+# ── LLM / Agents ───────────────────────────────────────────────
+langgraph
+langchain-core
+langchain-google-genai
+langchain
+python-dotenv
+diskcache
+
+# ── File / encoding / export ───────────────────────────────────
+chardet
+charset-normalizer
+plotly
+kaleido
+markdown
+pdfkit
+
+# ── Testing ────────────────────────────────────────────────────
+pytest
+httpx
