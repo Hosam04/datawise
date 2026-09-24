@@ -14,6 +14,7 @@ vi.mock('@/lib/api', () => ({
   getAnalysisStatus: vi.fn(),
   getDatasetArtifacts: vi.fn(),
   fetchMyReports: vi.fn(),
+  ensureFreshToken: vi.fn().mockResolvedValue(null), 
 }))
 
 vi.mock('next/navigation', () => ({

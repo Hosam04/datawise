@@ -1,21 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import SettingsPage from '../../../../app/(dashboard)/settings/page'
-import { clearAllAppData, downloadAppData } from '../../../../lib/app-data'
+import { downloadAppData } from '../../../../lib/app-data'
+import { useDatasetStore } from '../../../../stores/dataset-store'
+import { useReportStore } from '../../../../stores/report-store'
 
 vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: themeMock(), setTheme: setThemeMock }),
 }))
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn() },
+  toast: { success: vi.fn(), error: vi.fn() },
 }))
 
 vi.mock('../../../../lib/app-data', () => ({
   APP_VERSION: '1.2.3',
-  clearAllAppData: vi.fn(),
   downloadAppData: vi.fn(),
+}))
+
+vi.mock('@/lib/api', () => ({
+  deleteAllDatasetsApi: vi.fn().mockResolvedValue(undefined),
+  deleteAllReportsApi: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('@/components/ui/alert-dialog', () => ({
@@ -23,14 +29,16 @@ vi.mock('@/components/ui/alert-dialog', () => ({
     trigger,
     confirmLabel = 'Delete',
     onConfirm,
+    disabled,
   }: {
     trigger: React.ReactNode
     confirmLabel?: string
     onConfirm: () => void
+    disabled?: boolean
   }) => (
     <div>
       {trigger}
-      <button type="button" onClick={onConfirm}>
+      <button type="button" onClick={onConfirm} disabled={disabled}>
         {confirmLabel}
       </button>
     </div>
@@ -41,16 +49,25 @@ const setThemeMock = vi.fn()
 const themeMock = vi.fn(() => 'light')
 const toast = (await import('sonner')).toast as unknown as {
   success: ReturnType<typeof vi.fn>
+  error: ReturnType<typeof vi.fn>
 }
+
+const { deleteAllDatasetsApi, deleteAllReportsApi } = await import('../../../../lib/api')
 
 describe('SettingsPage', () => {
   beforeEach(() => {
     setThemeMock.mockClear()
     themeMock.mockClear()
     themeMock.mockReturnValue('light')
-    vi.mocked(clearAllAppData).mockClear()
     vi.mocked(downloadAppData).mockClear()
+    vi.mocked(deleteAllDatasetsApi).mockClear()
+    vi.mocked(deleteAllReportsApi).mockClear()
     toast.success.mockClear()
+    toast.error.mockClear()
+
+    useDatasetStore.setState({ datasets: [] })
+    useReportStore.setState({ reports: [] })
+
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
       cb(0)
       return 1
@@ -88,16 +105,56 @@ describe('SettingsPage', () => {
     })
   })
 
-  it('clears all data and toasts when confirmed', async () => {
-    render(<SettingsPage />)
-    fireEvent.click(screen.getByRole('button', { name: /Clear all data/ }))
-    expect(screen.getByRole('button', { name: 'Clear all' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Clear all' }))
-    await waitFor(() => {
-      expect(clearAllAppData).toHaveBeenCalledTimes(1)
+  it('cleans datasets and toasts when confirmed', async () => {
+    useDatasetStore.setState({
+      datasets: [
+        {
+          id: 'd1',
+          name: 'test.csv',
+          size: '1 MB',
+          status: 'Analyzed',
+        } as any,
+      ],
     })
-    expect(toast.success).toHaveBeenCalledWith('All data cleared', {
-      description: 'Datasets, reports, and favorites were removed.',
+
+    render(<SettingsPage />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clean Datasets' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Clean datasets' }))
+
+    await waitFor(() => {
+      expect(deleteAllDatasetsApi).toHaveBeenCalledTimes(1)
+    })
+    expect(useDatasetStore.getState().datasets).toHaveLength(0)
+    expect(toast.success).toHaveBeenCalledWith('Datasets cleaned', {
+      description: 'All datasets removed from database and local storage.',
+    })
+  })
+
+  it('cleans reports and toasts when confirmed', async () => {
+    useReportStore.setState({
+      reports: [
+        {
+          id: 'r1',
+          title: 'Report 1',
+          dataset: 'test.csv',
+          type: 'AI Analysis',
+          date: '2025-01-01',
+        } as any,
+      ],
+    })
+
+    render(<SettingsPage />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clean Reports' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Clean reports' }))
+
+    await waitFor(() => {
+      expect(deleteAllReportsApi).toHaveBeenCalledTimes(1)
+    })
+    expect(useReportStore.getState().reports).toHaveLength(0)
+    expect(toast.success).toHaveBeenCalledWith('Reports cleaned', {
+      description: 'All reports removed from database and local storage.',
     })
   })
 })
