@@ -5,6 +5,7 @@ import { Camera, Loader2, Save, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { avatarUrl, removeProfilePicture, updateProfileName, updateProfilePicture } from '@/lib/api'
+import { getUserInitial, hasValidAvatar } from '@/lib/user-avatar'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -44,15 +45,20 @@ export default function ProfilePage() {
   const [draftPreview, setDraftPreview] = useState<string | null>(null)
   const [photoSaving, setPhotoSaving] = useState(false)
   const [photoRemoving, setPhotoRemoving] = useState(false)
+  // Holds the src that failed to load, so a newly selected/updated picture
+  // retries automatically without an effect that would reset a boolean flag.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
 
   if (!user) return null
 
   const currentName = user.name ?? ''
   const name = draftName ?? currentName
-  const initial = currentName.trim()[0]?.toUpperCase() ?? 'D'
+  const initial = getUserInitial(user)
   const trimmedName = name.trim()
   const canSave = trimmedName.length > 0 && trimmedName !== currentName
-  const avatarSource = draftPreview ?? avatarUrl(user.picture)
+  const hasPicture = hasValidAvatar(user.picture)
+  const avatarSource = draftPreview ?? (hasPicture ? avatarUrl(user.picture) : undefined)
+  const showImage = Boolean(avatarSource) && failedSrc !== avatarSource
 
   const handleSaveName = async () => {
     if (!canSave) return
@@ -143,7 +149,7 @@ export default function ProfilePage() {
   }
 
   const handleRemovePhoto = async () => {
-    if (!user.picture) return
+    if (!hasPicture) return
 
     setPhotoRemoving(true)
     try {
@@ -188,15 +194,20 @@ export default function ProfilePage() {
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap items-center gap-6">
             <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent text-2xl font-semibold text-accent-foreground">
-              {avatarSource ? (
+              {showImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={avatarSource}
-                  alt={draftPreview ? 'Profile photo preview' : currentName}
+                  alt={
+                    draftPreview
+                      ? 'Profile photo preview'
+                      : currentName.trim() || `${initial}'s profile photo`
+                  }
+                  onError={() => setFailedSrc(avatarSource ?? null)}
                   className="h-full w-full object-cover"
                 />
               ) : (
-                initial
+                <span aria-hidden="true">{initial}</span>
               )}
             </div>
 
@@ -212,7 +223,7 @@ export default function ProfilePage() {
                   Change photo
                 </Button>
 
-                {user.picture && !draftFile && (
+                {hasPicture && !draftFile && (
                   <Button
                     type="button"
                     variant="ghost"

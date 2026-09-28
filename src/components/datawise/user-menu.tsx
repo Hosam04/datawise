@@ -8,6 +8,7 @@ import { IconTooltip } from '@/components/ui/tooltip'
 import { useEscapeKey } from '@/hooks/use-escape-key'
 import { avatarUrl } from '@/lib/api'
 import { focusRing, iconButtonHover } from '@/lib/ui-styles'
+import { getUserInitial, hasValidAvatar } from '@/lib/user-avatar'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 import { clearAllAppData } from '@/lib/app-data'
@@ -17,6 +18,9 @@ export function UserMenu() {
   const { user, logout } = useAuthStore()
   const containerRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
+  // Holds the src that failed to load. Comparing against the current src means
+  // a new picture retries automatically, with no effect needed to reset a flag.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -51,6 +55,11 @@ export function UserMenu() {
   // EARLY RETURN MUST BE PLACED AFTER ALL HOOKS
   if (!user) return null
 
+  const avatarSrc = hasValidAvatar(user.picture) ? avatarUrl(user.picture) : undefined
+  const showImage = Boolean(avatarSrc) && failedSrc !== avatarSrc
+  const initial = getUserInitial(user)
+  const displayName = user.name?.trim() || user.email?.trim() || 'User'
+
   return (
     <div ref={containerRef} className="relative">
       <IconTooltip
@@ -60,16 +69,17 @@ export function UserMenu() {
         aria-haspopup="menu"
         className="ml-1 flex size-8 items-center justify-center overflow-hidden rounded-full bg-accent transition-opacity hover:opacity-90"
       >
-        {avatarUrl(user?.picture) ? (
+        {showImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={avatarUrl(user?.picture)}
+            src={avatarSrc}
             alt=""
+            onError={() => setFailedSrc(avatarSrc ?? null)}
             className="h-full w-full object-cover"
           />
         ) : (
           <span className="text-sm font-semibold text-accent-foreground">
-            {user?.name?.[0] ?? 'D'}
+            {initial}
           </span>
         )}
       </IconTooltip>
@@ -80,7 +90,7 @@ export function UserMenu() {
           className="absolute top-full right-0 z-50 mt-2 w-56 overflow-hidden rounded-xl border border-border bg-card shadow-lg"
         >
           <div className="border-b border-border px-4 py-3">
-            <p className="text-sm font-semibold text-foreground">{user?.name ?? 'User'}</p>
+            <p className="text-sm font-semibold text-foreground">{displayName}</p>
             <p className="text-xs text-muted-foreground">{user?.email ?? 'user@example.com'}</p>
           </div>
 

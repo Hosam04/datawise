@@ -133,7 +133,11 @@ pnpm dev
 ## Author
 
 **Hosam Hasan**  
+<<<<<<< HEAD
 Data Science & Artificial Intelligence
+=======
+Data Science & Artificial Intelligence Student
+>>>>>>> 0bcd1e92 (fix: resolve profile picture avatar fallbacks and unicode initial issue)
 
 - GitHub: [Hosam04](https://github.com/Hosam04)
 - LinkedIn: [Hosam Hasan](https://www.linkedin.com/in/hosam-hasan-01207a301/)
@@ -143,6 +147,10 @@ Data Science & Artificial Intelligence
 
 ## License
 
+<<<<<<< HEAD
 This project is currently private.
+=======
+This project is currently private / under development.  
+>>>>>>> 0bcd1e92 (fix: resolve profile picture avatar fallbacks and unicode initial issue)
 Feel free to reach out if you'd like to collaborate or give feedback.
 ```

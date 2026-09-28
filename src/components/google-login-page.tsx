@@ -12,6 +12,28 @@ import {
 } from '@/lib/google-identity'
 
 
+/**
+ * Read the picture claim from Google's ID token as a UI fallback only.
+ * The backend remains responsible for validating the token and authenticating
+ * the user; this decoded value is never used for authorization.
+ */
+function getGooglePictureFromCredential(credential: string): string | undefined {
+  try {
+    const payload = credential.split('.')[1]
+    if (!payload) return undefined
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
+    const decoded = atob(padded)
+    const bytes = Uint8Array.from(decoded, (char) => char.charCodeAt(0))
+    const claims = JSON.parse(new TextDecoder().decode(bytes)) as { picture?: unknown }
+    return typeof claims.picture === 'string' && /^https:\/\//i.test(claims.picture)
+      ? claims.picture
+      : undefined
+  } catch {
+    return undefined
+  }
+}
+
 interface GoogleLoginPageProps {
   googleClientId: string
 }
@@ -49,7 +71,7 @@ export default function GoogleLoginPage({ googleClientId }: GoogleLoginPageProps
           id: data.user?.id,
           name: data.user?.name,
           email: data.user?.email,
-          picture: data.user?.picture,
+          picture: data.user?.picture ?? getGooglePictureFromCredential(response.credential),
         })
         setTokens(data.tokens?.access_token ?? null, data.tokens?.refresh_token ?? null)
         await hydrateUserDataFromServer()
