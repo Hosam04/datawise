@@ -133,7 +133,7 @@ pnpm dev
 ## Author
 
 **Hosam Hasan**  
-Data Science & Artificial Intelligence Student
+Data Science & Artificial Intelligence
 
 - GitHub: [Hosam04](https://github.com/Hosam04)
 - LinkedIn: [Hosam Hasan](https://www.linkedin.com/in/hosam-hasan-01207a301/)
@@ -143,6 +143,6 @@ Data Science & Artificial Intelligence Student
 
 ## License
 
-This project is currently private / under development.  
+This project is currently private.
 Feel free to reach out if you'd like to collaborate or give feedback.
 ```
